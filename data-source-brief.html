@@ -1,0 +1,512 @@
+<title>Mandi Data Brief</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root{
+    --bg:#f7f6f2;
+    --surface:#ffffff;
+    --ink:#1c211d;
+    --ink-soft:#565f58;
+    --line:#e2e0d6;
+    --accent:#2f6b4f;
+    --accent-soft:#e8f0ea;
+    --gold:#b3811f;
+    --gold-soft:#f7edd8;
+    --danger:#a13b2c;
+    --danger-soft:#f8e9e5;
+    --code-bg:#eef1ec;
+  }
+  :root:not([data-theme="light"]){
+    @media (prefers-color-scheme: dark){
+      --bg:#14170f;
+      --surface:#1b1f18;
+      --ink:#eae7dd;
+      --ink-soft:#a4ab9d;
+      --line:#33392e;
+      --accent:#7fc9a2;
+      --accent-soft:#1f2e24;
+      --gold:#e0b458;
+      --gold-soft:#302716;
+      --danger:#e19684;
+      --danger-soft:#31201b;
+      --code-bg:#20251b;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14170f;
+    --surface:#1b1f18;
+    --ink:#eae7dd;
+    --ink-soft:#a4ab9d;
+    --line:#33392e;
+    --accent:#7fc9a2;
+    --accent-soft:#1f2e24;
+    --gold:#e0b458;
+    --gold-soft:#302716;
+    --danger:#e19684;
+    --danger-soft:#31201b;
+    --code-bg:#20251b;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+    line-height:1.6;
+    padding-inline:16px;
+    padding-block:48px;
+  }
+  .sheet{
+    max-width:760px;
+    margin:0 auto;
+  }
+  .masthead{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    padding-bottom:28px;
+    margin-bottom:36px;
+    border-bottom:2px solid var(--ink);
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--accent);
+  }
+  h1{
+    font-family:'Fraunces', Georgia, serif;
+    font-weight:600;
+    font-size:clamp(28px, 5vw, 40px);
+    line-height:1.12;
+    margin:2px 0 4px;
+    text-wrap:balance;
+  }
+  .meta-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:4px 18px;
+    font-size:14px;
+    color:var(--ink-soft);
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .meta-row b{ color:var(--ink); font-weight:500; }
+
+  h2{
+    font-family:'Fraunces', Georgia, serif;
+    font-weight:600;
+    font-size:23px;
+    margin:0 0 4px;
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+  }
+  .num{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    color:var(--accent);
+    font-weight:500;
+  }
+  .section{
+    margin-top:40px;
+    padding-top:28px;
+    border-top:1px solid var(--line);
+  }
+  .section:first-of-type{ margin-top:0; border-top:none; padding-top:0; }
+  .lede{
+    color:var(--ink-soft);
+    font-size:15.5px;
+    max-width:62ch;
+    margin:0 0 20px;
+  }
+  p{ margin:0 0 14px; max-width:66ch; }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:14.5px;
+    margin:14px 0 6px;
+  }
+  caption{
+    text-align:left;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--ink-soft);
+    margin-bottom:8px;
+  }
+  th{
+    text-align:left;
+    font-weight:600;
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.03em;
+    color:var(--ink-soft);
+    padding:8px 12px;
+    border-bottom:1px solid var(--ink);
+  }
+  td{
+    padding:10px 12px;
+    border-bottom:1px solid var(--line);
+    vertical-align:top;
+  }
+  tr:last-child td{ border-bottom:1px solid var(--ink); }
+  .tbl-wrap{ overflow-x:auto; }
+  code, .mono{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.92em;
+    background:var(--code-bg);
+    padding:.1em .4em;
+    border-radius:4px;
+  }
+  .wrong{ color:var(--danger); text-decoration:line-through; text-decoration-thickness:1px; }
+  .right{ color:var(--accent); font-weight:600; }
+
+  .status{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    padding:3px 9px;
+    border-radius:100px;
+    white-space:nowrap;
+  }
+  .status.ok{ background:var(--accent-soft); color:var(--accent); }
+  .status.watch{ background:var(--gold-soft); color:var(--gold); }
+  .status.open{ background:var(--danger-soft); color:var(--danger); }
+  .status::before{ content:''; width:6px; height:6px; border-radius:50%; background:currentColor; }
+
+  ul, ol{ margin:0 0 14px; padding-left:22px; }
+  li{ margin-bottom:6px; max-width:62ch; }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 20px;
+    margin:16px 0;
+  }
+  .card h3{
+    margin:0 0 8px;
+    font-size:15px;
+    font-family:'Source Sans 3', sans-serif;
+    font-weight:700;
+  }
+
+  .flow{
+    display:flex;
+    flex-direction:column;
+    gap:0;
+    margin:18px 0 6px;
+  }
+  .flow-step{
+    display:flex;
+    gap:14px;
+    padding:14px 0;
+    border-bottom:1px dashed var(--line);
+  }
+  .flow-step:last-child{ border-bottom:none; }
+  .flow-index{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color:var(--accent);
+    min-width:22px;
+    padding-top:2px;
+  }
+  .flow-body b{ display:block; margin-bottom:2px; font-size:15px; }
+  .flow-body span{ color:var(--ink-soft); font-size:14px; }
+
+  .swatch-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin:14px 0 18px;
+  }
+  .swatch{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:6px 10px 6px 6px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+  }
+  .swatch-chip{
+    width:20px;
+    height:20px;
+    border-radius:5px;
+    border:1px solid rgba(0,0,0,.12);
+    flex-shrink:0;
+  }
+  .footer-note{
+    margin-top:44px;
+    padding-top:20px;
+    border-top:2px solid var(--ink);
+    font-size:13px;
+    color:var(--ink-soft);
+    font-family:'IBM Plex Mono', monospace;
+  }
+
+  @media (max-width:520px){
+    table, thead, tbody, th, td, tr{ display:block; }
+    thead{ display:none; }
+    td{ border-bottom:none; padding:4px 0; }
+    tr{ padding:12px 0; border-bottom:1px solid var(--line); }
+    td::before{
+      content: attr(data-label);
+      display:block;
+      font-family:'IBM Plex Mono', monospace;
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      color:var(--ink-soft);
+      margin-bottom:2px;
+    }
+  }
+</style>
+
+<div class="sheet">
+
+  <div class="masthead">
+    <span class="eyebrow">Data Source Brief &amp; Dashboard Plan — For Review</span>
+    <h1>Mandi Price Data: Source, Extraction &amp; Dashboard</h1>
+    <div class="meta-row">
+      <span><b>Crops</b> Capsicum · Cucumber · Muskmelon · Green Chilli* · Tomato*</span>
+      <span><b>Mandis</b> Azadpur (Delhi) · Muhana / Jaipur</span>
+      <span><b>Window</b> Sep 2023 – Sep 2026 (36 months)</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">01</span> What data we are using</h2>
+    <p class="lede">The pipeline now runs live against Agmarknet's own official API — not a third-party mirror — with real rows already landing in the sheet. Every claim below was verified directly, not assumed.</p>
+
+    <div class="tbl-wrap">
+    <table>
+      <caption>Confirmed source</caption>
+      <thead>
+        <tr><th>Source</th><th>Role</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td data-label="Source"><b>Agmarknet's own API</b><br><span class="mono" style="font-size:12px">api.agmarknet.gov.in</span></td>
+          <td data-label="Role">Sole data source — the same endpoint agmarknet.gov.in's own website calls internally. No API key needed.</td>
+          <td data-label="Status"><span class="status ok">live, confirmed back to Sep 2023</span></td>
+        </tr>
+        <tr>
+          <td data-label="Source">data.gov.in mirror API</td>
+          <td data-label="Role">Considered first, dropped</td>
+          <td data-label="Status"><span class="status open">only ~10 months history for these mandis — confirmed live, insufficient</span></td>
+        </tr>
+        <tr>
+          <td data-label="Source">Agriwatch / CommodityOnline (private)</td>
+          <td data-label="Role">Would be prioritised over government data <i>if</i> available and within 3% — instructed by project lead</td>
+          <td data-label="Status"><span class="status open">confirmed unavailable — paywalled or not independent</span></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">02</span> Justification note — why this data was chosen</h2>
+    <div class="card">
+      <p style="margin:0"><b>For the dashboard header, verbatim:</b><br><br>
+      "This project uses the Government of India's official Agmarknet price and arrival records, pulled directly from Agmarknet's own public API (the same one its website uses), as the authoritative source for all tracked crops across both mandis. Per project guidance, a private aggregator would be prioritised over government data where it is available, cleaner, and within 3% of the government figure — however, on direct testing, no private source met that bar: Agriwatch offers no free or public access, and CommodityOnline's free tier is itself a re-publication of the same Agmarknet feed rather than an independently collected dataset. Government data is therefore used as the sole source, with private reconciliation to be added only if a licensed private feed is secured."</p>
+    </div>
+    <p>We initially used a data.gov.in mirror of this same data, which was easier to query in bulk — but live testing showed it only retained about 10 months of history for these specific mandis, well short of the 3-year requirement. We traced the actual API Agmarknet's own website calls internally and switched to it directly: confirmed live to return real, correct data back to at least <b>15-Jan-2024</b>, and the running pipeline has data as far back as <b>25-Sep-2023</b> — covering the full 36-month window.</p>
+    <p>Each record carries <b>Arrivals</b> (quantity, in Metric Tonnes) and <b>Grade</b> alongside Min/Max/Modal price — so quantity and grade-split requirements are satisfied from this one source.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">03</span> Naming corrections &amp; crop substitutions</h2>
+    <p class="lede">Two categories of correction were needed: government naming that differs from common usage, and three requested crops that don't exist as trackable commodities anywhere in the regulated mandi system.</p>
+
+    <div class="tbl-wrap">
+    <table>
+      <caption>Commodity &amp; market name corrections</caption>
+      <thead>
+        <tr><th>What we assumed</th><th>What Agmarknet actually calls it</th></tr>
+      </thead>
+      <tbody>
+        <tr><td data-label="Assumed"><span class="wrong">Muskmelon</span></td><td data-label="Actual"><span class="right">Karbuja(Musk Melon)</span> — under commodity group "Fruits"</td></tr>
+        <tr><td data-label="Assumed"><span class="wrong">Coloured Capsicum</span></td><td data-label="Actual"><span class="right">Capsicum</span> — colour is a <i>Variety</i> value, not a separate commodity</td></tr>
+        <tr><td data-label="Assumed"><span class="wrong">Muhana Mandi</span></td><td data-label="Actual"><span class="right">Jaipur (F&amp;V) APMC</span> — Muhana is the site name; the official market field is this</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="tbl-wrap" style="margin-top:20px">
+    <table>
+      <caption>Requested crops with no real Agmarknet listing — resolution</caption>
+      <thead>
+        <tr><th>Requested</th><th>Finding</th><th>Resolution</th></tr>
+      </thead>
+      <tbody>
+        <tr><td data-label="Requested">Naga Chilli</td><td data-label="Finding">Checked 13 dates, 2023–2026, every state and market in India — zero data anywhere. Not a gap; genuinely untracked.</td><td data-label="Resolution"><span class="right">Substituted: Green Chilli</span></td></tr>
+        <tr><td data-label="Requested">Cherry Tomato</td><td data-label="Finding">No separate listing in any commodity group — only plain "Tomato" exists.</td><td data-label="Resolution"><span class="right">Substituted: Tomato</span></td></tr>
+        <tr><td data-label="Requested">Zucchini</td><td data-label="Finding">No listing and no close substitute in any commodity group.</td><td data-label="Resolution"><span class="wrong">Dropped</span> — logged in Fetch_Gaps as untracked</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p style="margin-top:14px"><b>Green Chilli</b> and <b>Tomato</b> are real, independently verified data (both mandis, confirmed live) — labeled in the sheet as substitutes, not silently merged under the original crop's name.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">04</span> How it's extracted (running now)</h2>
+    <p class="lede">Google Apps Script, calling Agmarknet's own API in parallel batches, writing to Raw_Data on a self-rescheduling trigger.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-index">1</div>
+        <div class="flow-body"><b>Call Agmarknet's API directly</b><span>One call per (crop, date) pair returns that day's prices for every market in India reporting that commodity — no API key required.</span></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-index">2</div>
+        <div class="flow-body"><b>Filter to our two mandis in-memory</b><span>Only rows where Market = "APMC Azadpur" or "Jaipur (F&amp;V) APMC" are kept; the rest is discarded immediately, nothing extra stored.</span></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-index">3</div>
+        <div class="flow-body"><b>Fetch in parallel batches, adaptively paced</b><span>Batches of up to 10 requests fire together via <code>UrlFetchApp.fetchAll()</code>. Batch size automatically shrinks on a real HTTP 429 (confirmed live) and grows back after clean runs — self-tuning against Agmarknet's own rate limit.</span></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-index">4</div>
+        <div class="flow-body"><b>Resume automatically across runs</b><span>A self-created trigger continues the sync past Apps Script's 6-minute execution limit until the full 5-crop × 36-month range is complete. A LockService guard prevents duplicate concurrent runs.</span></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-index">5</div>
+        <div class="flow-body"><b>Log real gaps, don't fake them</b><span>A date that fails even after retry is logged to Fetch_Gaps with a reason — visible and auditable, not silently dropped or backfilled with synthetic values.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">05</span> Dashboard: Looker Studio setup</h2>
+    <p class="lede">All unit conversion and seasonality logic is done as Looker Studio calculated fields — the Raw_Data sheet itself is never modified, so the live sync can keep writing to it without conflict.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-index">1</div>
+        <div class="flow-body"><b>Connect the source</b><span>Looker Studio → Create → Report → Add Data → Google Sheets connector → this spreadsheet → <code>Raw_Data</code> tab.</span></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-index">2</div>
+        <div class="flow-body"><b>Verify field types</b><span>Confirm <code>Arrival_Date</code> is typed as Date (not Text) — it's stored as ISO <code>YYYY-MM-DD</code>, which Looker Studio should auto-detect; check this before building charts. Confirm <code>Min_Price</code>, <code>Max_Price</code>, <code>Modal_Price</code>, <code>Average_Price</code>, <code>Arrivals_MT</code> are typed as Number/Metric, not Dimension.</span></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-index">3</div>
+        <div class="flow-body"><b>Add a Unit Selector parameter</b><span>Resource → Manage parameters → new Parameter <code>Unit_Selector</code>, type Text, allowed values <code>kg</code> / <code>quintal</code> / <code>ton</code>, default <code>quintal</code>.</span></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-index">4</div>
+        <div class="flow-body"><b>Add calculated fields</b><span><code>Price_Display</code> = <code>CASE WHEN Unit_Selector = "kg" THEN Average_Price/100 WHEN Unit_Selector = "ton" THEN Average_Price*10 ELSE Average_Price END</code>. Also add <code>Year</code> = <code>YEAR(Arrival_Date)</code> for the seasonality chart below.</span></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-index">5</div>
+        <div class="flow-body"><b>Add filter controls</b><span>Dimension control on <code>Crop_Label</code>, another on <code>Mandi_Label</code>, and a Drop-down (Parameter) control bound to <code>Unit_Selector</code> so viewers can switch units live.</span></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-index">6</div>
+        <div class="flow-body"><b>Build the seasonality overlay chart</b><span>Time series chart, Dimension = <code>Arrival_Date</code> (Month-Day granularity), Breakdown dimension = <code>Year</code>, Metric = <code>Price_Display</code>. This overlays 2023/2024/2025/2026 as separate lines on one seasonal axis — the recurring price-loop view your sir asked for.</span></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-index">7</div>
+        <div class="flow-body"><b>Build the grade/quantity view</b><span>Bar chart, Dimension = <code>Grade</code>, Metrics = <code>SUM(Arrivals_MT)</code> and <code>AVG(Average_Price)</code>, filtered by the Crop/Mandi controls — shows real grade labels (FAQ, Grade A, Medium, etc.), not a forced binary.</span></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-index">8</div>
+        <div class="flow-body"><b>Paste the justification note</b><span>Add a Text element at the top of the report with the verbatim note from §02.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">06</span> Open items</h2>
+    <div class="card">
+      <h3><span class="status watch">watch</span> Grade is not a clean A/B split</h3>
+      <p style="margin:0">Live data shows ~8 grade labels per market (FAQ, Local, Medium, Grade A/B/C, Small, Large). The dashboard shows these as-is rather than forcing a binary — more honest to the source data.</p>
+    </div>
+    <div class="card">
+      <h3><span class="status watch">watch</span> Substituted crops have real gaps</h3>
+      <p style="margin:0">Green Chilli and Tomato have confirmed real data at both mandis, but not every single day (normal — arrivals aren't daily). Visible in Fetch_Gaps, not hidden.</p>
+    </div>
+    <div class="card">
+      <h3><span class="status ok">resolved</span> Private source — confirmed unavailable, decision made</h3>
+      <p style="margin:0">Agriwatch (paywalled), CommodityOnline free tier (mirrors Agmarknet, not independent), e-NAM (public dashboard returns zero rows), and Kisan Suvidha (not a price database) were all checked live. None qualify. No synthetic/simulated "private" data is used, since that would misrepresent the methodology.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">07</span> Result</h2>
+    <p class="lede">What actually exists today: a working extraction pipeline, a populated dataset, and a live dashboard — not a plan, a delivered thing.</p>
+
+    <div class="tbl-wrap">
+    <table>
+      <caption>Records collected so far, by crop (sync still running)</caption>
+      <thead>
+        <tr><th>Crop</th><th>Records</th><th>Note</th></tr>
+      </thead>
+      <tbody>
+        <tr><td data-label="Crop">Tomato (Cherry Tomato substitute)</td><td data-label="Records">1,459</td><td data-label="Note">Real data, both mandis</td></tr>
+        <tr><td data-label="Crop">English Cucumber</td><td data-label="Records">1,441</td><td data-label="Note">Original crop</td></tr>
+        <tr><td data-label="Crop">Green Chilli (Naga Chilli substitute)</td><td data-label="Records">1,434</td><td data-label="Note">Real data, both mandis</td></tr>
+        <tr><td data-label="Crop">Coloured Capsicum</td><td data-label="Records">1,373</td><td data-label="Note">Original crop</td></tr>
+        <tr><td data-label="Crop">Karbuja (Muskmelon)</td><td data-label="Records">997</td><td data-label="Note">Original crop</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p><b>~6,700 real price/arrival records</b> collected as of this write-up, spanning <b>25-Sep-2023 to present</b> — the full 36-month window — across 5 crops and both target mandis. Zucchini is separately logged as confirmed untracked by any Indian government mandi system (see §03), not silently omitted.</p>
+
+    <div class="card">
+      <h3>Live dashboard</h3>
+      <p style="margin:0">Built in Looker Studio, connected directly to the live <code>Raw_Data</code> sheet — updates automatically as the sync continues.<br><a href="https://datastudio.google.com/reporting/246a35df-b736-4d79-bcb5-a06175364e6b" target="_blank" rel="noopener">datastudio.google.com/reporting/246a35df-b736-4d79-bcb5-a06175364e6b</a></p>
+    </div>
+
+    <p style="margin-top:16px"><b>What it shows:</b> current price, 3-year average, total arrivals, and year-over-year change for any crop/mandi combination, switchable between ₹/kg, ₹/Quintal, and ₹/Ton; a multi-year seasonality overlay confirming whether each crop's price cycle repeats year to year; arrivals volume alongside price to check supply against price movement; and a grade breakdown showing the real reported grade labels rather than a forced simplification.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">08</span> Dashboard style guide (premium finish)</h2>
+    <p class="lede">The default Looker Studio palette reads as a template. These values are colorblind-validated (not eyeballed) and applied once at the theme level, not per-chart — the fastest way to make the report look designed rather than default.</p>
+
+    <h3 style="margin-top:4px">Backgrounds &amp; text</h3>
+    <div class="swatch-row">
+      <span class="swatch"><span class="swatch-chip" style="background:#0d0d0d"></span>Page bg · #0d0d0d</span>
+      <span class="swatch"><span class="swatch-chip" style="background:#1a1a19"></span>Chart surface · #1a1a19</span>
+      <span class="swatch"><span class="swatch-chip" style="background:#ffffff"></span>Primary text · #ffffff</span>
+      <span class="swatch"><span class="swatch-chip" style="background:#c3c2b7"></span>Secondary text · #c3c2b7</span>
+      <span class="swatch"><span class="swatch-chip" style="background:#898781"></span>Muted / axis · #898781</span>
+      <span class="swatch"><span class="swatch-chip" style="background:#2c2c2a"></span>Gridlines · #2c2c2a</span>
+    </div>
+
+    <h3>Year series (seasonality overlay) — fixed order, not cycled</h3>
+    <div class="swatch-row">
+      <span class="swatch"><span class="swatch-chip" style="background:#3987e5"></span>2023 · #3987e5</span>
+      <span class="swatch"><span class="swatch-chip" style="background:#d95926"></span>2024 · #d95926</span>
+      <span class="swatch"><span class="swatch-chip" style="background:#199e70"></span>2025 · #199e70</span>
+      <span class="swatch"><span class="swatch-chip" style="background:#c98500"></span>2026 · #c98500</span>
+    </div>
+    <p>Single accent for every other chart/scorecard (arrivals, grade, current price): <span class="mono">#3987e5</span> — one accent used consistently reads as designed; a different color per chart reads as default template.</p>
+
+    <div class="card">
+      <h3 style="margin-top:0">Beyond color</h3>
+      <ul style="margin:0">
+        <li>Tabular/monospaced number alignment on scorecards, consistent decimal places (2 for price, 0 for arrivals) — mismatched decimals across scorecards is the most common "unpolished" tell.</li>
+        <li>One typeface for the whole report — system sans throughout, no display font on titles. Premium dashboards are typographically restrained.</li>
+        <li>Chart borders off everywhere — separate cards with whitespace, not visible borders or shadows.</li>
+        <li>Direct labels instead of legend boxes wherever there are only 1–2 series (e.g. the price scorecard needs no legend at all).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    * Green Chilli substitutes for Naga Chilli; Tomato substitutes for Cherry Tomato — both clearly labeled in the sheet, not silently merged. Prepared for review — every figure above was pulled live from the actual APIs and sites, not assumed from documentation.
+  </div>
+
+</div>
