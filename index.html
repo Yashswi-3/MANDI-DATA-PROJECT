@@ -21,6 +21,7 @@
     --s4:#eda100; --s4-fill:rgba(237,161,0,0.16);
     --s5:#e87ba4; --s5-fill:rgba(232,123,164,0.16);
     --seq-200:#9ec5f4; --seq-350:#5598e7; --seq-450:#2a78d6; --seq-550:#1c5cab;
+    --price-line:#0b0b0b;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
@@ -44,6 +45,7 @@
       --s4:#c98500; --s4-fill:rgba(201,133,0,0.20);
       --s5:#d55181; --s5-fill:rgba(213,81,129,0.20);
       --seq-200:#3987e5; --seq-350:#256abf; --seq-450:#184f95; --seq-550:#104281;
+      --price-line:#f5f4ef;
     }
   }
   :root[data-theme="dark"]{
@@ -67,6 +69,7 @@
     --s4:#c98500; --s4-fill:rgba(201,133,0,0.20);
     --s5:#d55181; --s5-fill:rgba(213,81,129,0.20);
     --seq-200:#3987e5; --seq-350:#256abf; --seq-450:#184f95; --seq-550:#104281;
+    --price-line:#f5f4ef;
   }
 
   *{box-sizing:border-box;}
@@ -272,8 +275,8 @@
     </div>
 
     <div style="margin-bottom:14px;">
-      <h2 style="font-size:12.5px;color:var(--text-secondary);">Delhi vs Jaipur — Modal Price</h2>
-      <div class="desc" style="margin-bottom:8px;">Both mandis on one chart for the selected crop · a date missing in either mandi is dropped from both lines, so only days both markets actually traded are compared</div>
+      <h2 style="font-size:12.5px;color:var(--text-secondary);">Delhi vs Jaipur — Min–Max–Modal Price</h2>
+      <div class="desc" style="margin-bottom:8px;">Both mandis on one chart for the selected crop · the solid line is modal price, the shaded band is that mandi's min–max range · a date missing in either mandi is dropped from both, so only days both markets actually traded are compared</div>
       <div class="chart-holder" id="bandHolder"></div>
     </div>
 
@@ -299,10 +302,15 @@
   </div>
 
   <div class="card">
-    <div class="card-head">
+    <div class="card-head" style="align-items:center;">
       <div>
         <h2>Supply Volume vs Price — Arrivals</h2>
-        <div class="desc">Total tonnes reaching the mandi per bucket, stacked by crop · pick any date or range above (Range presets or From/To), then hover a bucket to see volume and modal price together</div>
+        <div class="desc">Volume (stacked by crop, left axis) vs price (line, right axis) · pick any date or range above (Range presets or From/To), choose which price to compare, then hover a bucket to see both together</div>
+      </div>
+      <div class="seg" id="segVolPrice">
+        <button data-v="min" aria-pressed="false">Min</button>
+        <button data-v="max" aria-pressed="false">Max</button>
+        <button data-v="modal" aria-pressed="true">Modal</button>
       </div>
     </div>
     <div class="chart-holder" id="arrivalsHolder"></div>
@@ -7067,7 +7075,7 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
 
   function cssv(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
-  var state = { commodities:new Set(COMMODITIES.map(function(c){return c.key;})), mandi:"all", range:"all", from:null, to:null, gran:"week", unit:"quintal", focus:"Tomato", year:"all" };
+  var state = { commodities:new Set(COMMODITIES.map(function(c){return c.key;})), mandi:"all", range:"all", from:null, to:null, gran:"week", unit:"quintal", focus:"Tomato", year:"all", volPriceMetric:"modal" };
 
   var ROWS = []; // {d:Date, t:ms, y, m, commodity, mandi, grade, arrivals, min, max, modal, avg}
   var DATA_MAX_T = 0, DATA_MIN_T = 0;
@@ -7188,6 +7196,7 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
     buildSeg("segRange", function(v){ state.range=v; onDateClear(); });
     buildSeg("segGran", function(v){ state.gran=v; render(); });
     buildSeg("segUnit", function(v){ state.unit=v; render(); });
+    buildSeg("segVolPrice", function(v){ state.volPriceMetric=v; render(); });
     buildFocusSelect();
     buildYearSelect();
     setupDateInput();
@@ -7529,10 +7538,86 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
     var mandiKeys = ["delhi","jaipur"];
     var buckets = buildBuckets(aligned, state.gran, mandiKeys, function(r){ return r.mandi; });
     var series = [
-      { key:"delhi",  label:MANDI_NAME.delhi,  color:"var(--s1)" },
-      { key:"jaipur", label:MANDI_NAME.jaipur, color:"var(--s2)" }
+      { key:"delhi",  label:MANDI_NAME.delhi,  color:"var(--s1)", fill:"var(--s1-fill)" },
+      { key:"jaipur", label:MANDI_NAME.jaipur, color:"var(--s2)", fill:"var(--s2-fill)" }
     ];
-    drawMultiLine(holder, buckets, mandiKeys, { valueKey:"modal", yLabel:"Modal price "+unitSuffix(), height:260, series:series, legend:true });
+    drawBandCompare(holder, buckets, series, { height:260 });
+  }
+
+  // Two (or more) series drawn as a min–max shaded band with the modal price as the solid
+  // centre line — used to compare Delhi vs Jaipur for the focus crop on one chart.
+  function drawBandCompare(holder, buckets, series, opts){
+    var W=960, H=opts.height||260, padL=54, padR=14, padT=14, padB=28;
+    var plotW=W-padL-padR, plotH=H-padT-padB;
+    holder.style.position="relative";
+    var svg = svgEl("svg",{viewBox:"0 0 "+W+" "+H, class:"chart-svg"});
+    if(!buckets.length){
+      holder.appendChild(svg);
+      var t = svgEl("text",{x:W/2,y:H/2,"text-anchor":"middle",class:"axis-label"}); t.textContent="No data for this selection";
+      svg.appendChild(t); return;
+    }
+    var maxV=0;
+    buckets.forEach(function(b){ series.forEach(function(s){ var v=b.byC[s.key]; if(v && v.max!=null){ var cv=convertPrice(v.max); if(cv>maxV) maxV=cv; } }); });
+    maxV = niceMax(maxV*1.1);
+    var n=buckets.length;
+    function x(i){ return padL+(n<=1?0:(i/(n-1))*plotW); }
+    function y(v){ return padT+plotH-(v/maxV)*plotH; }
+    var ticks=4;
+    for(var gi=0;gi<=ticks;gi++){ var v=maxV*gi/ticks, yy=y(v);
+      svg.appendChild(svgEl("line",{x1:padL,x2:W-padR,y1:yy,y2:yy,class:gi===0?"baseline":"gridline"}));
+      var lab=svgEl("text",{x:padL-8,y:yy+3,"text-anchor":"end",class:"axis-label"});
+      lab.textContent = (state.unit==="kg")? v.toFixed(v<10?1:0) : (v>=1000?(v/1000).toFixed(v>=10000?0:1)+"k":Math.round(v).toString());
+      svg.appendChild(lab);
+    }
+    var stride=Math.max(1,Math.ceil(n/8));
+    for(var i=0;i<n;i+=stride){ var lx=svgEl("text",{x:x(i),y:H-8,"text-anchor":"middle",class:"axis-label"}); lx.textContent=buckets[i].label; svg.appendChild(lx); }
+
+    var dotsByKey = {};
+    series.forEach(function(s){
+      var top=[], bot=[], avgPts=[];
+      buckets.forEach(function(b,i){ var v=b.byC[s.key]; if(v && v.max!=null){ top.push([x(i),y(convertPrice(v.max))]); bot.push([x(i),y(convertPrice(v.min))]); avgPts.push([x(i),y(convertPrice(v.modal))]); } });
+      if(!top.length) return;
+      var dArea = top.map(function(p,i){return (i===0?"M":"L")+p[0].toFixed(1)+","+p[1].toFixed(1);}).join(" ") +
+        " L"+bot[bot.length-1][0].toFixed(1)+","+bot[bot.length-1][1].toFixed(1)+" " +
+        bot.slice().reverse().map(function(p){return "L"+p[0].toFixed(1)+","+p[1].toFixed(1);}).join(" ") + " Z";
+      svg.appendChild(svgEl("path",{d:dArea, fill:s.fill, class:"series-fill"}));
+      var dAvg = avgPts.map(function(p,i){return (i===0?"M":"L")+p[0].toFixed(1)+","+p[1].toFixed(1);}).join(" ");
+      svg.appendChild(svgEl("path",{d:dAvg, class:"series-line", stroke:s.color}));
+      var dot = svgEl("circle",{r:4,fill:s.color,stroke:cssv("--surface-card"),"stroke-width":1.5,opacity:0});
+      svg.appendChild(dot); dotsByKey[s.key]=dot;
+    });
+
+    var hit=svgEl("rect",{x:padL,y:padT,width:plotW,height:plotH,class:"hit"}); svg.appendChild(hit);
+    var tip = makeTooltip(holder);
+    var crossLine = svgEl("line",{class:"crosshair",y1:padT,y2:padT+plotH,opacity:0}); svg.appendChild(crossLine);
+    hit.addEventListener("mousemove",function(ev){
+      var rect=svg.getBoundingClientRect(); var mx=(ev.clientX-rect.left)*(W/rect.width);
+      var idx=Math.max(0,Math.min(n-1,Math.round(((mx-padL)/plotW)*(n-1))));
+      var bx=x(idx); crossLine.setAttribute("x1",bx); crossLine.setAttribute("x2",bx); crossLine.setAttribute("opacity",1);
+      var b = buckets[idx];
+      var html = "<div style='font-weight:700;margin-bottom:4px;'>"+b.label+"</div>";
+      series.forEach(function(s){
+        var v = b.byC[s.key];
+        if(v && v.modal!=null){
+          dotsByKey[s.key].setAttribute("cx",bx); dotsByKey[s.key].setAttribute("cy",y(convertPrice(v.modal))); dotsByKey[s.key].setAttribute("opacity",1);
+          html += "<div class='row' style='margin-top:4px;'><span class='sw' style='background:"+s.color+"'></span><b>"+s.label+"</b></div>"+
+            "<div style='padding-left:13px;'>Max &nbsp;"+fmtPrice(v.max)+" &nbsp;·&nbsp; Modal &nbsp;<b>"+fmtPrice(v.modal)+"</b> &nbsp;·&nbsp; Min &nbsp;"+fmtPrice(v.min)+"</div>";
+        } else { dotsByKey[s.key].setAttribute("opacity",0); }
+      });
+      tip.innerHTML = html;
+      tip.style.left=(bx/W*100)+"%"; tip.style.top=(padT/H*100)+"%"; tip.style.opacity=1;
+    });
+    hit.addEventListener("mouseleave",function(){ crossLine.setAttribute("opacity",0); tip.style.opacity=0; });
+    holder.appendChild(svg);
+
+    var note = document.createElement("div"); note.className="legend-note";
+    series.forEach(function(s){
+      var li=document.createElement("div"); li.className="li";
+      var ln=document.createElement("span"); ln.className="ln"; ln.style.background=s.color;
+      li.appendChild(ln); li.appendChild(document.createTextNode(" "+s.label+" — modal line, min–max shaded"));
+      note.appendChild(li);
+    });
+    holder.appendChild(note);
   }
 
   // ---------- year-over-year seasonality ----------
@@ -7639,13 +7724,15 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
     });
   }
 
-  // ---------- arrivals stacked area ----------
+  // ---------- volume (stacked area, left axis) vs price (line, right axis) ----------
   function renderArrivals(){
     var holder = document.getElementById("arrivalsHolder"); holder.innerHTML="";
     var commList = COMMODITIES.filter(function(c){return state.commodities.has(c.key);}).map(function(c){return c.key;});
     var rows = filteredRows();
     var buckets = buildBuckets(rows, state.gran, commList);
-    var W=960,H=260,padL=54,padR=14,padT=14,padB=26;
+    var metric = state.volPriceMetric || "modal";
+    var metricLabel = metric==="min" ? "Min" : metric==="max" ? "Max" : "Modal";
+    var W=960,H=260,padL=54,padR=54,padT=14,padB=26;
     var plotW=W-padL-padR, plotH=H-padT-padB;
     var svg=svgEl("svg",{viewBox:"0 0 "+W+" "+H,class:"chart-svg"});
     holder.style.position="relative";
@@ -7653,13 +7740,31 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
     var n=buckets.length;
     var totals = buckets.map(function(b){ var s=0; commList.forEach(function(c){ var v=b.byC[c]; if(v) s+=v.arrivals; }); return s; });
     var maxV = niceMax(Math.max.apply(null,totals.concat([1]))*1.15);
+    // price series: average of the selected metric across crops that had arrivals that bucket
+    var priceSeries = buckets.map(function(b){
+      var vals=[];
+      commList.forEach(function(ckey){ var v=b.byC[ckey]; if(v && v.arrivals && v[metric]!=null) vals.push(v[metric]); });
+      return vals.length ? vals.reduce(function(s,x){return s+x;},0)/vals.length : null;
+    });
+    var maxP = niceMax(Math.max.apply(null, priceSeries.filter(function(v){return v!=null;}).map(convertPrice).concat([1]))*1.15);
     function x(i){ return padL+(n<=1?0:(i/(n-1))*plotW); }
     function y(v){ return padT+plotH-(v/maxV)*plotH; }
+    function yP(v){ return padT+plotH-(v/maxP)*plotH; }
     var ticks=4;
-    for(var gi=0;gi<=ticks;gi++){ var v=maxV*gi/ticks, yy=y(v);
+    for(var gi=0;gi<=ticks;gi++){
+      var yy = padT+plotH-(gi/ticks)*plotH;
       svg.appendChild(svgEl("line",{x1:padL,x2:W-padR,y1:yy,y2:yy,class:gi===0?"baseline":"gridline"}));
-      var lab=svgEl("text",{x:padL-8,y:yy+3,"text-anchor":"end",class:"axis-label"}); lab.textContent = v>=1000?(v/1000).toFixed(1)+"k":Math.round(v); svg.appendChild(lab);
+      var vVol = maxV*gi/ticks;
+      var labVol=svgEl("text",{x:padL-8,y:yy+3,"text-anchor":"end",class:"axis-label"}); labVol.textContent = vVol>=1000?(vVol/1000).toFixed(1)+"k":Math.round(vVol); svg.appendChild(labVol);
+      var vPrice = maxP*gi/ticks;
+      var labPrice=svgEl("text",{x:W-padR+8,y:yy+3,"text-anchor":"start",class:"axis-label"});
+      labPrice.textContent = (state.unit==="kg") ? vPrice.toFixed(vPrice<10?1:0) : (vPrice>=1000 ? (vPrice/1000).toFixed(vPrice>=10000?0:1)+"k" : Math.round(vPrice).toString());
+      svg.appendChild(labPrice);
     }
+    // axis captions
+    var volCap = svgEl("text",{x:padL,y:10,"text-anchor":"start",class:"axis-label"}); volCap.textContent="Volume (MT)"; svg.appendChild(volCap);
+    var priceCap = svgEl("text",{x:W-padR,y:10,"text-anchor":"end",class:"axis-label"}); priceCap.textContent=metricLabel+" price "+unitSuffix(); svg.appendChild(priceCap);
+
     var stride=Math.max(1,Math.ceil(n/8));
     for(var i=0;i<n;i+=stride){ var lx=svgEl("text",{x:x(i),y:H-6,"text-anchor":"middle",class:"axis-label"}); lx.textContent=buckets[i].label; svg.appendChild(lx); }
 
@@ -7679,6 +7784,18 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
       svg.appendChild(svgEl("path",{d:dArea, fill:"var("+c.cssVar+")", opacity:0.82, class:"series-fill"}));
     });
 
+    // price line — a neutral ink colour (not a crop hue) on its own right-hand scale
+    var priceColor = "var(--price-line)";
+    var pricePts = [];
+    priceSeries.forEach(function(v,i){ if(v!=null) pricePts.push([x(i), yP(convertPrice(v))]); });
+    var priceDot = null;
+    if(pricePts.length){
+      var dPrice = pricePts.map(function(p,i){return (i===0?"M":"L")+p[0].toFixed(1)+","+p[1].toFixed(1);}).join(" ");
+      svg.appendChild(svgEl("path",{d:dPrice, class:"series-line", stroke:priceColor, "stroke-width":2.5, "stroke-dasharray":"1 0", style:"filter:drop-shadow(0 0 2px rgba(0,0,0,0.35));"}));
+      priceDot = svgEl("circle",{r:4,fill:priceColor,stroke:cssv("--surface-card"),"stroke-width":1.5,opacity:0});
+      svg.appendChild(priceDot);
+    }
+
     var hit=svgEl("rect",{x:padL,y:padT,width:plotW,height:plotH,class:"hit"}); svg.appendChild(hit);
     var tip = makeTooltip(holder);
     var crossLine = svgEl("line",{class:"crosshair",y1:padT,y2:padT+plotH,opacity:0}); svg.appendChild(crossLine);
@@ -7687,20 +7804,29 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
       var idx=Math.max(0,Math.min(n-1,Math.round(((mx-padL)/plotW)*(n-1))));
       var bx=x(idx); crossLine.setAttribute("x1",bx); crossLine.setAttribute("x2",bx); crossLine.setAttribute("opacity",1);
       var b = buckets[idx]; var html="<div style='font-weight:700;margin-bottom:4px;'>"+b.label+"</div>";
-      var priceVals = [];
       commList.forEach(function(ckey){
         var c=COMMODITY_BY_KEY[ckey]; var v=b.byC[ckey];
         if(v && v.arrivals){
-          if(v.modal!=null) priceVals.push(v.modal);
-          html+="<div class='row'><span class='sw' style='background:var("+c.cssVar+")'></span>"+c.label+" &nbsp;<b>"+fmtMT(v.arrivals)+" MT</b>"+(v.modal!=null?" &nbsp;·&nbsp; "+fmtPrice(v.modal):"")+"</div>";
+          html+="<div class='row'><span class='sw' style='background:var("+c.cssVar+")'></span>"+c.label+" &nbsp;<b>"+fmtMT(v.arrivals)+" MT</b>"+(v[metric]!=null?" &nbsp;·&nbsp; "+fmtPrice(v[metric]):"")+"</div>";
         }
       });
-      var avgPrice = priceVals.length ? priceVals.reduce(function(s,v){return s+v;},0)/priceVals.length : null;
-      html += "<div style='margin-top:4px;border-top:1px solid rgba(255,255,255,0.2);padding-top:4px;'>Total volume &nbsp;<b>"+fmtMT(totals[idx])+" MT</b>"+(avgPrice!=null?" &nbsp;·&nbsp; Avg modal <b>"+fmtPrice(avgPrice)+"</b>":"")+"</div>";
+      var pv = priceSeries[idx];
+      if(priceDot){
+        if(pv!=null){ priceDot.setAttribute("cx",bx); priceDot.setAttribute("cy",yP(convertPrice(pv))); priceDot.setAttribute("opacity",1); }
+        else priceDot.setAttribute("opacity",0);
+      }
+      html += "<div style='margin-top:4px;border-top:1px solid rgba(255,255,255,0.2);padding-top:4px;'><span class='row'><span class='sw' style='background:"+priceColor+"'></span>Total volume <b>"+fmtMT(totals[idx])+" MT</b>"+(pv!=null?" &nbsp;·&nbsp; Avg "+metricLabel.toLowerCase()+" <b>"+fmtPrice(pv)+"</b>":"")+"</span></div>";
       tip.innerHTML = html; tip.style.left=(bx/W*100)+"%"; tip.style.top=(padT/H*100)+"%"; tip.style.opacity=1;
     });
-    hit.addEventListener("mouseleave",function(){ crossLine.setAttribute("opacity",0); tip.style.opacity=0; });
+    hit.addEventListener("mouseleave",function(){ crossLine.setAttribute("opacity",0); tip.style.opacity=0; if(priceDot) priceDot.setAttribute("opacity",0); });
     holder.appendChild(svg);
+
+    var note = document.createElement("div"); note.className="legend-note";
+    var li1=document.createElement("div"); li1.className="li"; var sw1=document.createElement("span"); sw1.className="sw"; sw1.style.background="var(--s3)";
+    li1.appendChild(sw1); li1.appendChild(document.createTextNode(" Volume — stacked by crop (left axis)")); note.appendChild(li1);
+    var li2=document.createElement("div"); li2.className="li"; var ln2=document.createElement("span"); ln2.className="ln"; ln2.style.background=priceColor;
+    li2.appendChild(ln2); li2.appendChild(document.createTextNode(" "+metricLabel+" price — avg across selected crops (right axis)")); note.appendChild(li2);
+    holder.appendChild(note);
   }
 
   // ---------- mandi comparison small multiples ----------
