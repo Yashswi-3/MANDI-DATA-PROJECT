@@ -7358,6 +7358,19 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
     for(var k in attrs) el.setAttribute(k, attrs[k]);
     return el;
   }
+  // A rect path rounded only on its top-left/top-right corners, square on the bottom —
+  // used for a bar segment that sits on top of another segment (so the seam stays flush).
+  function roundedTopRectPath(x, y, w, h, r){
+    r = Math.min(r, w/2, h);
+    if(r<=0) return "M"+x+","+y+" h"+w+" v"+h+" h"+(-w)+" Z";
+    return "M"+x+","+(y+r)+
+      " a"+r+","+r+" 0 0 1 "+r+",-"+r+
+      " h"+(w-2*r)+
+      " a"+r+","+r+" 0 0 1 "+r+","+r+
+      " v"+(h-r)+
+      " h"+(-w)+
+      " Z";
+  }
   function niceMax(v){
     if(v<=0) return 10;
     var p = Math.pow(10, Math.floor(Math.log10(v)));
@@ -7527,10 +7540,11 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
     holder.appendChild(note);
   }
 
-  // ---------- yearly min–max–modal range bars ----------
-  // One bar per year (bars stay separate, side by side) — but each bar now spans that
-  // year's min→max price range, with the modal average drawn as a solid tick across it,
-  // so a single bar carries all three figures instead of only the modal average.
+  // ---------- yearly min–max–modal solid bars ----------
+  // One solid bar per year, grounded at zero (0→max) like an ordinary bar chart — the
+  // 0→min portion is a lighter tint of the same colour, the min→max portion is full
+  // opacity, and the modal average is a bold contrasting tick inside the bar. So one bar
+  // still carries all three figures, but reads as a normal bar rather than a floating band.
   function renderYearly(){
     var holder = document.getElementById("yearlyHolder"); holder.innerHTML="";
     holder.style.position = "relative";
@@ -7564,12 +7578,16 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
       var cx = padL + (plotW/years.length)*(i+0.5);
       var s = stats[i];
       var yTop = y(convertPrice(s.max)), yBot = y(convertPrice(s.min)), yModal = y(convertPrice(s.modal));
+      var yBase = y(0);
       var dim = state.year!=="all" && yr!==state.year;
       var color = yearColor(yr);
-      var bar = svgEl("rect",{x:cx-bw/2,y:yTop,width:bw,height:Math.max(1,yBot-yTop),rx:4,fill:color,opacity:dim?0.20:0.45});
-      svg.appendChild(bar);
-      // modal tick — a solid full-width line across the bar at the modal price
-      svg.appendChild(svgEl("line",{x1:cx-bw/2,x2:cx+bw/2,y1:yModal,y2:yModal,stroke:color,"stroke-width":3,opacity:dim?0.4:1}));
+      // lower segment: 0 → min, a lighter tint of the year's colour
+      svg.appendChild(svgEl("rect",{x:cx-bw/2,y:yBot,width:bw,height:Math.max(0,yBase-yBot),rx:4,fill:color,opacity:dim?0.12:0.28}));
+      // upper segment: min → max, full-strength colour, rounded top corners only — together
+      // the two segments read as one solid bar grounded at zero, like an ordinary bar chart
+      svg.appendChild(svgEl("path",{d:roundedTopRectPath(cx-bw/2, yTop, bw, Math.max(1,yBot-yTop), 4), fill:color, opacity:dim?0.28:1}));
+      // modal tick — a bold contrasting line across the bar at the modal price
+      svg.appendChild(svgEl("line",{x1:cx-bw/2,x2:cx+bw/2,y1:yModal,y2:yModal,stroke:cssv("--surface-card"),"stroke-width":3,opacity:dim?0.5:1}));
       var lab=svgEl("text",{x:cx,y:yTop-6,"text-anchor":"middle",class:"axis-label",fill:cssv("--text-primary")}); lab.style.fontWeight="700"; lab.textContent = fmtPrice(s.modal); svg.appendChild(lab);
       var ylab=svgEl("text",{x:cx,y:H-6,"text-anchor":"middle",class:"axis-label"}); ylab.textContent=yr; svg.appendChild(ylab);
       // hover target — the full bar height plus a little headroom for the value label
@@ -7585,7 +7603,7 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
     holder.appendChild(svg);
 
     var note = document.createElement("div"); note.className="legend-note";
-    note.textContent = "Bar spans min–max for the year · solid tick = modal average · hover a bar for exact figures";
+    note.textContent = "Bar runs 0→max · lighter base = 0→min · bold tick = modal average · hover a bar for exact figures";
     holder.appendChild(note);
   }
 
