@@ -295,12 +295,15 @@
     <div class="card-head" style="align-items:center;">
       <div>
         <h2>Supply Volume vs Price — Arrivals</h2>
-        <div class="desc">Volume (stacked by crop, left axis) vs price (line, right axis) · pick any date or range above (Range presets or From/To), choose which price to compare, then hover a bucket to see both together</div>
+        <div class="desc">Volume (stacked by crop, left axis) vs price (line, right axis) · a date is shown only when both volume and price are recorded, so a gap in either one drops that date from both · pick a year below, or any date/range above, then hover a bucket to see both together</div>
       </div>
-      <div class="seg" id="segVolPrice">
-        <button data-v="min" aria-pressed="false">Min</button>
-        <button data-v="max" aria-pressed="false">Max</button>
-        <button data-v="modal" aria-pressed="true">Modal</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select class="selcrop" id="volPriceYearSelect" aria-label="Year"></select>
+        <div class="seg" id="segVolPrice">
+          <button data-v="min" aria-pressed="false">Min</button>
+          <button data-v="max" aria-pressed="false">Max</button>
+          <button data-v="modal" aria-pressed="true">Modal</button>
+        </div>
       </div>
     </div>
     <div class="chart-holder" id="arrivalsHolder"></div>
@@ -8306,7 +8309,7 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
 
   function cssv(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
-  var state = { commodities:new Set(COMMODITIES.map(function(c){return c.key;})), mandi:"all", range:"all", from:null, to:null, gran:"week", unit:"quintal", focus:"Tomato", year:"all", volPriceMetric:"modal" };
+  var state = { commodities:new Set(COMMODITIES.map(function(c){return c.key;})), mandi:"all", range:"all", from:null, to:null, gran:"week", unit:"quintal", focus:"Tomato", year:"all", volPriceMetric:"modal", volPriceYear:"all" };
 
   var ROWS = []; // {d:Date, t:ms, y, m, commodity, mandi, grade, arrivals, min, max, modal, avg}
   var DATA_MAX_T = 0, DATA_MIN_T = 0;
@@ -8367,7 +8370,7 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
     var wasBooted = !!document.querySelector("#cropChips .chip");
     if(wasBooted){
       document.querySelectorAll("#cropChips .chip").forEach(function(c){ c.remove(); });
-      buildChips(); buildFocusSelect(); buildYearSelect(); setupDateInput();
+      buildChips(); buildFocusSelect(); buildYearSelect(); buildVolPriceYearSelect(); setupDateInput();
       document.getElementById("metaBox").innerHTML =
         "<b>"+ROWS.length.toLocaleString("en-IN")+"</b> records &nbsp;·&nbsp; "+
         fmtDateShort(new Date(DATA_MIN_T))+" → "+fmtDateShort(new Date(DATA_MAX_T));
@@ -8430,6 +8433,7 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
     buildSeg("segVolPrice", function(v){ state.volPriceMetric=v; render(); });
     buildFocusSelect();
     buildYearSelect();
+    buildVolPriceYearSelect();
     setupDateInput();
     // From/To date range: either end may be left blank (open-ended); overrides the Range preset while set.
     function onDateChange(){
@@ -8510,6 +8514,21 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
     if(years.indexOf(state.year)<0) state.year = "all";
     sel.value = String(state.year);
     sel.onchange = function(){ state.year = sel.value==="all" ? "all" : +sel.value; render(); };
+  }
+  // Supply Volume vs Price year picker — independent of the Crop Deep-Dive year picker
+  // above. "All years" respects the Range/From-To filters as usual; picking a specific
+  // year shows that whole year instead, same convention as the Deep-Dive picker.
+  function buildVolPriceYearSelect(){
+    var sel = document.getElementById("volPriceYearSelect");
+    var years = Array.from(new Set(ROWS.map(function(r){return r.y;}))).sort();
+    sel.innerHTML = '<option value="all">All years</option>' + years.map(function(y){ return '<option value="'+y+'">'+y+'</option>'; }).join("");
+    if(years.indexOf(state.volPriceYear)<0) state.volPriceYear = "all";
+    sel.value = String(state.volPriceYear);
+    sel.onchange = function(){ state.volPriceYear = sel.value==="all" ? "all" : +sel.value; render(); };
+  }
+  function volPriceRows(){
+    var rows = filteredRows({ ignoreRange: state.volPriceYear!=="all" });
+    return state.volPriceYear==="all" ? rows : rows.filter(function(r){ return r.y===state.volPriceYear; });
   }
   function focusRows(allYears){
     var rows = filteredRows({commodities:new Set([state.focus]), ignoreRange: state.year!=="all"});
@@ -8911,25 +8930,33 @@ Fetch_Date,Arrival_Date,Crop_Label,Commodity_Raw,Mandi_Label,State,Market,Variet
   function renderArrivals(){
     var holder = document.getElementById("arrivalsHolder"); holder.innerHTML="";
     var commList = COMMODITIES.filter(function(c){return state.commodities.has(c.key);}).map(function(c){return c.key;});
-    var rows = filteredRows();
-    var buckets = buildBuckets(rows, state.gran, commList);
-    buckets.forEach(function(b){ b.label = bucketLabelWithYear(b.key, state.gran); });
+    var rows = volPriceRows();
+    var rawBuckets = buildBuckets(rows, state.gran, commList);
+    rawBuckets.forEach(function(b){ b.label = bucketLabelWithYear(b.key, state.gran); });
     var metric = state.volPriceMetric || "modal";
     var metricLabel = metric==="min" ? "Min" : metric==="max" ? "Max" : "Modal";
     var W=960,H=260,padL=54,padR=54,padT=14,padB=26;
     var plotW=W-padL-padR, plotH=H-padT-padB;
     var svg=svgEl("svg",{viewBox:"0 0 "+W+" "+H,class:"chart-svg"});
     holder.style.position="relative";
-    if(!buckets.length){ holder.appendChild(svg); return; }
-    var n=buckets.length;
-    var totals = buckets.map(function(b){ var s=0; commList.forEach(function(c){ var v=b.byC[c]; if(v) s+=v.arrivals; }); return s; });
-    var maxV = niceMax(Math.max.apply(null,totals.concat([1]))*1.15);
+    if(!rawBuckets.length){ holder.appendChild(svg); return; }
+    var rawTotals = rawBuckets.map(function(b){ var s=0; commList.forEach(function(c){ var v=b.byC[c]; if(v) s+=v.arrivals; }); return s; });
     // price series: average of the selected metric across crops that had arrivals that bucket
-    var priceSeries = buckets.map(function(b){
+    var rawPriceSeries = rawBuckets.map(function(b){
       var vals=[];
       commList.forEach(function(ckey){ var v=b.byC[ckey]; if(v && v.arrivals && v[metric]!=null) vals.push(v[metric]); });
       return vals.length ? vals.reduce(function(s,x){return s+x;},0)/vals.length : null;
     });
+    // keep a date only when BOTH volume and price are present — a bucket missing either
+    // one is dropped from both series, so the bars and the price line never show a value
+    // that has no counterpart on the other axis.
+    var buckets=[], totals=[], priceSeries=[];
+    rawBuckets.forEach(function(b,i){
+      if(rawTotals[i]>0 && rawPriceSeries[i]!=null){ buckets.push(b); totals.push(rawTotals[i]); priceSeries.push(rawPriceSeries[i]); }
+    });
+    if(!buckets.length){ holder.appendChild(svg); return; }
+    var n=buckets.length;
+    var maxV = niceMax(Math.max.apply(null,totals.concat([1]))*1.15);
     var maxP = niceMax(Math.max.apply(null, priceSeries.filter(function(v){return v!=null;}).map(convertPrice).concat([1]))*1.15);
     // averages over the buckets currently on screen — used for the reference lines and the
     // "vs average" percentage shown on hover
